@@ -1,0 +1,111 @@
+---
+title: "PML"
+author: "Kun Qian"
+date: "Sunday, January 25, 2015"
+output: html_document
+---
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+## Data Source
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project comes from this original source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+Please Note that I the code I use loads the data directly from the URL provided, so that you are not required to download the file to your environment. Please customize the code to your specific needs.
+
+
+## Project Intended Results
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+## Reproduceablity
+In order to reproduce the same results, you need a certain set of packages, as well as setting a pseudo random seed equal to the one I used.
+The following Libraries were used for this project, which you should install - if not done yet - and load on your working environment.
+
+```{r}
+library(caret)
+```
+Load the same seed:
+```{r}
+set.seed(825)
+```
+## Getting the data
+The training and testing data set can be found on the following URL:
+```{r}
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+```
+
+### Load data
+```{r}
+training <- read.csv(url(trainUrl), na.strings=c("NA","#DIV/0!","","."))
+test <- read.csv(url(testUrl), na.strings=c("NA","#DIV/0!","","."))
+```
+
+### Clean the data by removing features have 80% or more missing values
+```{r}
+noMissCol = colSums(is.na(train))/length(training[,1]) < 0.8
+training1 = training[,noMissCol]
+training1 = training1[,-1]
+```
+check missing value after cleaning
+```{r}
+colSums(is.na(training1))
+```
+
+## Fit model using rf method
+
+### Create fit control using 10-fold cross validation
+```{r}
+fitControl <- trainControl(
+  method = "repeatedcv",
+  number = 10,
+```
+
+### Fit model with random forest method
+```{r}
+rf_model<-train(classe~.,data=training1,method="rf",
+                trControl=trainControl(method="cv",number=5),
+                prox=TRUE,allowParallel=TRUE)
+```
+Check final model fit
+```{r}
+print(rf_model$finalModel)
+```
+Check variable importance and plot
+```{r}
+varImp(rf_model)
+plot(varImp(rf_model))
+```
+
+### Predict using final model
+predtrain = predict(rf_model,training)
+
+### Provide error report.
+```{r}
+confusionMatrix(predtrain,training1$classe)
+```
+
+## Conclusions and Test Data Submit
+As can be seen from the confusion matrix this model is very accurate. I did experiment with PCA and other models, but did not get as good of accuracy. Because my training data was around 99% accurate I expected nearly all of the submitted test cases to be correct. It turned out they were all correct.
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+predtest = predict(rf_model,test1)
+answer = as.character(predtest)
+pml_write_files(answer)
+```
+
+
